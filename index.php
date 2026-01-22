@@ -40,6 +40,25 @@ require_once 'includes/header.php';
     <!-- Content Area -->
     <div class="relative min-h-screen">
         
+        <!-- Search Info Banner -->
+        <div x-show="isSearchMode" x-transition class="mb-6 bg-gray-800 rounded-lg p-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <div>
+                    <p class="text-white font-medium">Hasil pencarian untuk "<span x-text="searchQuery"></span>"</p>
+                    <p class="text-gray-400 text-sm">di platform <span x-text="getPlatformName(activePlatform)"></span></p>
+                </div>
+            </div>
+            <button 
+                @click="isSearchMode = false; searchQuery = ''; loadPlatformData(activePlatform)"
+                class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm transition"
+            >
+                Tutup
+            </button>
+        </div>
+        
         <!-- Loading Skeleton -->
         <div x-show="loading" x-transition>
             <?php include 'includes/skeleton.php'; ?>
@@ -90,7 +109,7 @@ require_once 'includes/header.php';
                         </div>
                         
                         <!-- Additional Info -->
-                        <div class="flex items-center justify-between text-[10px] text-gray-400">
+                        <div x-show="activePlatform !== 'netshort' && drama.episodes > 0" class="flex items-center justify-between text-[10px] text-gray-400">
                             <span x-text="drama.episodes + ' Ep'"></span>
                         </div>
                     </div>
@@ -102,10 +121,11 @@ require_once 'includes/header.php';
         <!-- Empty State -->
         <div x-show="!loading && dramas.length === 0" class="text-center py-20">
             <svg class="w-24 h-24 mx-auto text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" x-show="isSearchMode"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" x-show="!isSearchMode"/>
             </svg>
-            <h3 class="text-2xl font-bold mb-2">Tidak Ada Drama</h3>
-            <p class="text-gray-400">Belum ada konten yang tersedia untuk platform ini.</p>
+            <h3 class="text-2xl font-bold mb-2" x-text="isSearchMode ? 'Tidak Ditemukan' : 'Tidak Ada Drama'"></h3>
+            <p class="text-gray-400" x-text="isSearchMode ? 'Tidak ada hasil untuk pencarian Anda. Coba kata kunci lain.' : 'Belum ada konten yang tersedia untuk platform ini.'"></p>
         </div>
         
     </div>
@@ -118,16 +138,58 @@ function dramaApp() {
         activePlatform: 'dramabox',
         dramas: [],
         loading: false,
+        isSearchMode: false,
+        searchQuery: '',
         
         init() {
             // Load initial platform data
             this.loadPlatformData('dramabox');
+            
+            // Listen for search events
+            window.addEventListener('search', (e) => {
+                this.handleSearch(e.detail.query);
+            });
         },
         
         switchPlatform(platform) {
             if (this.activePlatform !== platform) {
                 this.activePlatform = platform;
+                this.isSearchMode = false;
+                this.searchQuery = '';
                 this.loadPlatformData(platform);
+            }
+        },
+        
+        async handleSearch(query) {
+            if (!query || query.trim() === '') {
+                // If empty, load normal platform data
+                this.isSearchMode = false;
+                this.searchQuery = '';
+                this.loadPlatformData(this.activePlatform);
+                return;
+            }
+            
+            this.searchQuery = query.trim();
+            this.isSearchMode = true;
+            this.loading = true;
+            this.dramas = [];
+            
+            try {
+                const response = await fetch(`api/search.php?platform=${this.activePlatform}&query=${encodeURIComponent(this.searchQuery)}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.dramas = data.data;
+                } else {
+                    alert('Pencarian gagal: ' + (data.message || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error searching:', error);
+                alert('Terjadi kesalahan saat mencari. Silakan coba lagi.');
+            } finally {
+                setTimeout(() => {
+                    this.loading = false;
+                }, 300);
             }
         },
         
