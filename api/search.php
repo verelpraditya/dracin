@@ -19,9 +19,8 @@ try {
     $useNewApi = USE_NEW_DRAMABOX_API && $platform === 'dramabox';
     
     if ($useNewApi) {
-        // New DramaBox API - use search from list (no dedicated search endpoint yet)
-        // For now, fetch from foryou and filter client-side or use old API
-        $apiUrl = 'https://api.sansekai.my.id/api/dramabox/search?query=' . urlencode($query);
+        // New DramaBox API - use new search endpoint
+        $apiUrl = 'https://dramabos.asia/api/dramabox/api/search/' . urlencode($query) . '/1?lang=in&pageSize=20';
     } else {
         $apiUrls = [
             'dramabox' => 'https://api.sansekai.my.id/api/dramabox/search?query=' . urlencode($query),
@@ -62,21 +61,25 @@ try {
     $results = [];
     
     if ($platform === 'dramabox') {
-        // DramaBox returns direct array, not nested in 'value'
-        $items = $apiData;
-        
-        // If it's wrapped in 'value' key, use that instead
-        if (isset($apiData['value']) && is_array($apiData['value'])) {
-            $items = $apiData['value'];
-        }
-        
-        if (is_array($items)) {
+        // New API response structure
+        if ($useNewApi) {
+            $items = [];
+            if (isset($apiData['data']['list']) && is_array($apiData['data']['list'])) {
+                $items = $apiData['data']['list'];
+            }
+            
             foreach ($items as $item) {
                 if (!is_array($item)) continue;
                 
                 $tags = [];
-                if (isset($item['tagNames']) && is_array($item['tagNames'])) {
-                    $tags = array_slice($item['tagNames'], 0, 3);
+                if (isset($item['tags']) && is_array($item['tags'])) {
+                    $tags = array_slice($item['tags'], 0, 3);
+                }
+                
+                // API chapterCount is 1 more than actual episodes
+                $chapterCount = intval($item['chapterCount'] ?? 0);
+                if ($chapterCount > 0) {
+                    $chapterCount = $chapterCount - 1;
                 }
                 
                 $results[] = [
@@ -86,10 +89,41 @@ try {
                     'poster' => $item['cover'] ?? '',
                     'rating' => 0,
                     'tags' => $tags,
-                    'episodes' => 0,
+                    'episodes' => $chapterCount,
                     'year' => date('Y'),
                     'description' => $item['introduction'] ?? ''
                 ];
+            }
+        } else {
+            // Old API response structure
+            $items = $apiData;
+            
+            // If it's wrapped in 'value' key, use that instead
+            if (isset($apiData['value']) && is_array($apiData['value'])) {
+                $items = $apiData['value'];
+            }
+            
+            if (is_array($items)) {
+                foreach ($items as $item) {
+                    if (!is_array($item)) continue;
+                    
+                    $tags = [];
+                    if (isset($item['tagNames']) && is_array($item['tagNames'])) {
+                        $tags = array_slice($item['tagNames'], 0, 3);
+                    }
+                    
+                    $results[] = [
+                        'id' => $item['bookId'] ?? '',
+                        'bookId' => $item['bookId'] ?? '',
+                        'title' => $item['bookName'] ?? 'Unknown',
+                        'poster' => $item['cover'] ?? '',
+                        'rating' => 0,
+                        'tags' => $tags,
+                        'episodes' => 0,
+                        'year' => date('Y'),
+                        'description' => $item['introduction'] ?? ''
+                    ];
+                }
             }
         }
     } elseif ($platform === 'netshort') {

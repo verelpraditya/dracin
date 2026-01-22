@@ -26,6 +26,9 @@ $pageTitle = 'Watch Drama';
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- CryptoJS for MD5 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
@@ -330,6 +333,11 @@ $pageTitle = 'Watch Drama';
             isPlaying: false,
             videoInitialized: false,
             
+            generateToken(suffix) {
+                const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+                return CryptoJS.MD5(date + suffix).toString();
+            },
+            
             async init() {
                 await this.loadEpisodes();
             },
@@ -351,17 +359,41 @@ $pageTitle = 'Watch Drama';
                         data = JSON.parse(cached);
                         console.log('Using cached episodes');
                     } else {
-                        // Fetch episodes - use new API for dramabox
-                        const apiFile = this.platform === 'dramabox' ? 'episodes2.php' : 'episodes.php';
-                        
-                        // For new API, let episodes2.php fetch the total automatically
-                        const apiParams = this.platform === 'dramabox' ? `?bookId=${this.bookId}&platform=${this.platform}&newapi=1` : `?bookId=${this.bookId}&platform=${this.platform}`;
-                        
-                        const response = await fetch(`api/${apiFile}${apiParams}`);
-                        data = await response.json();
+                        // Fetch episodes - use obfuscated API for dramabox
+                        if (this.platform === 'dramabox') {
+                            const token = this.generateToken('dre2');
+                            const params = `i=${this.bookId}&p=${this.platform}`;
+                            const encoded = btoa(params);
+                            
+                            const response = await fetch(`api/e.php?t=${token}&q=${encoded}`);
+                            const result = await response.json();
+                            
+                            if (result.r) {
+                                const decoded = JSON.parse(atob(result.r));
+                                data = {
+                                    success: decoded.s,
+                                    data: {
+                                        drama: {
+                                            title: decoded.d.info.t,
+                                            cover: decoded.d.info.c,
+                                            description: decoded.d.info.desc
+                                        },
+                                        episodes: decoded.d.eps.map(ep => ({
+                                            episode_number: ep.n,
+                                            title: ep.t,
+                                            video_url: ep.u
+                                        })),
+                                        total_episodes: decoded.d.total
+                                    }
+                                };
+                            }
+                        } else {
+                            const response = await fetch(`api/episodes.php?bookId=${this.bookId}&platform=${this.platform}`);
+                            data = await response.json();
+                        }
                         
                         // Cache the response
-                        if (data.success) {
+                        if (data && data.success) {
                             localStorage.setItem(cacheKey, JSON.stringify(data));
                             localStorage.setItem(`${cacheKey}_time`, now.toString());
                         }
@@ -444,25 +476,34 @@ $pageTitle = 'Watch Drama';
             async fetchVideoUrl(episodeNum) {
                 this.loading = true;
                 try {
-                    const response = await fetch(`api/getvideo.php?bookId=${this.bookId}&episode=${episodeNum}`);
-                    const data = await response.json();
+                    const token = this.generateToken('drv2');
+                    const params = `i=${this.bookId}&e=${episodeNum}`;
+                    const encoded = btoa(params);
                     
-                    if (data.success && data.data.video_url) {
-                        this.currentVideoUrl = data.data.video_url;
-                        
-                        // Update episode in array
-                        const episode = this.episodes.find(ep => ep.episode_number === episodeNum);
-                        if (episode) {
-                            episode.video_url = data.data.video_url;
+                    const response = await fetch(`api/v.php?t=${token}&q=${encoded}`);
+                    const result = await response.json();
+                    
+                    if (result.r) {
+                        const decoded = JSON.parse(atob(result.r));
+                        if (decoded.s && decoded.d.u) {
+                            this.currentVideoUrl = decoded.d.u;
+                            
+                            // Update episode in array
+                            const episode = this.episodes.find(ep => ep.episode_number === episodeNum);
+                            if (episode) {
+                                episode.video_url = decoded.d.u;
+                            }
+                            
+                            // Load video
+                            this.loadVideoSource(decoded.d.u, true);
+                        } else {
+                            alert('Gagal memuat video');
                         }
-                        
-                        // Load video
-                        this.loadVideoSource(data.data.video_url, true);
                     } else {
-                        alert('Gagal memuat video: ' + (data.message || 'Unknown error'));
+                        alert('Gagal memuat video');
                     }
                 } catch (error) {
-                    console.error('Error fetching video URL:', error);
+                    console.error('Error fetching video:', error);
                     alert('Terjadi kesalahan saat memuat video. Silakan coba lagi.');
                 } finally {
                     this.loading = false;
@@ -520,17 +561,13 @@ $pageTitle = 'Watch Drama';
             
             shareVideo() {
                 const url = window.location.href;
-                if (navigator.share) {
-                    navigator.share({
-                        title: this.dramaTitle,
-                        text: `Tonton ${this.dramaTitle} EP. ${this.currentEpisode}`,
-                        url: url
-                    });
-                } else {
-                    // Fallback: copy to clipboard
-                    navigator.clipboard.writeText(url);
+                // Copy to clipboard instead of using navigator.share to avoid permission popup
+                navigator.clipboard.writeText(url).then(() => {
                     alert('Link berhasil disalin!');
-                }
+                }).catch(() => {
+                    // Fallback if clipboard access denied
+                    prompt('Salin link ini:', url);
+                });
             },
             
             goBack() {
