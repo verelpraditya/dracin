@@ -9,22 +9,26 @@ require_once 'includes/header.php';
     
     <!-- Platform Tabs -->
     <div class="mb-8">
-        <div class="flex flex-wrap gap-4 justify-center lg:justify-start">
+        <div class="flex flex-wrap gap-3 justify-center lg:justify-start">
             <?php foreach ($platforms as $key => $platform): ?>
             <button 
                 @click="switchPlatform('<?php echo $key; ?>')"
                 :class="activePlatform === '<?php echo $key; ?>' ? 'bg-gradient-to-r <?php echo $platform['color']; ?> text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'"
-                class="group relative flex items-center gap-3 px-6 py-3 rounded-xl transition-all duration-300 transform hover:scale-105"
+                class="group relative flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-300 transform hover:scale-105"
             >
-                <!-- Icon -->
-                <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-white/10">
-                    <span class="text-2xl"><?php echo $platform['icon']; ?></span>
+                <!-- Logo Image -->
+                <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-white/10 overflow-hidden">
+                    <img 
+                        src="assets/image/<?php echo $key; ?>.png" 
+                        alt="<?php echo $platform['name']; ?>"
+                        class="w-full h-full object-contain"
+                    >
                 </div>
                 
                 <!-- Platform Name -->
                 <div class="flex flex-col items-start">
-                    <span class="font-bold text-lg"><?php echo $platform['name']; ?></span>
-                    <span class="text-xs opacity-75" x-show="activePlatform === '<?php echo $key; ?>'">Eksklusif</span>
+                    <span class="font-bold text-sm sm:text-base"><?php echo $platform['name']; ?></span>
+                    <span class="text-[10px] opacity-75" x-show="activePlatform === '<?php echo $key; ?>'">Eksklusif</span>
                 </div>
                 
                 <!-- Active Indicator -->
