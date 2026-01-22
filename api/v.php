@@ -17,12 +17,29 @@ try {
     
     $bookId = $params['i'] ?? '';
     $episode = intval($params['e'] ?? 1);
+    $platform = $params['p'] ?? 'dramabox';
     
     if (empty($bookId) || $episode < 1) {
         throw new Exception('Invalid parameters');
     }
     
-    // Fetch video URL from new API
+    // FlickReels - video URL already provided in episodes list
+    if ($platform === 'flickreels') {
+        // For FlickReels, the URL is already embedded in episode list
+        // Just return success, actual URL will be used directly from episodes
+        $result = base64_encode(json_encode([
+            's' => true,
+            'd' => [
+                'u' => '', // Will be replaced by actual URL from episode list
+                'e' => $episode
+            ]
+        ]));
+        
+        echo json_encode(['r' => $result]);
+        exit;
+    }
+    
+    // Fetch video URL from new API (DramaBox)
     $playerUrl = 'https://dramabos.asia/api/dramabox/api/watch/player?bookId=' . urlencode($bookId) . '&index=' . $episode . '&lang=in';
     
     $ch = curl_init();

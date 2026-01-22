@@ -32,6 +32,11 @@ $platforms = [
         'name' => 'NetShort',
         'icon' => '🎥',
         'color' => 'from-orange-500 to-pink-500'
+    ],
+    'flickreels' => [
+        'name' => 'FlickReels',
+        'icon' => '🎞️',
+        'color' => 'from-purple-500 to-indigo-500'
     ]
 ];
 

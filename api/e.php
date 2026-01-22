@@ -22,6 +22,58 @@ try {
         throw new Exception('Invalid parameters');
     }
     
+    // FlickReels API
+    if ($platform === 'flickreels') {
+        $detailUrl = 'https://dramabos.asia/api/flick/drama/' . urlencode($bookId) . '?lang=6';
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $detailUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($httpCode == 200 && $response) {
+            $detail = json_decode($response, true);
+            if ($detail && isset($detail['data']['list'])) {
+                $dramaInfo = $detail['data'];
+                $episodes = [];
+                
+                foreach ($dramaInfo['list'] as $ep) {
+                    $episodes[] = [
+                        'n' => $ep['chapter_num'],
+                        't' => $ep['chapter_title'] ?? 'Episode ' . $ep['chapter_num'],
+                        'u' => $ep['play_url'] ?? ''
+                    ];
+                }
+                
+                // Encode response
+                $result = base64_encode(json_encode([
+                    's' => true,
+                    'd' => [
+                        'info' => [
+                            't' => $dramaInfo['title'] ?? 'Drama',
+                            'c' => $dramaInfo['cover'] ?? '',
+                            'desc' => ''
+                        ],
+                        'eps' => $episodes,
+                        'total' => count($episodes)
+                    ]
+                ]));
+                
+                echo json_encode(['r' => $result]);
+                exit;
+            }
+        }
+        
+        throw new Exception('Failed to fetch FlickReels data');
+    }
+    
     // Use new API for DramaBox
     if ($platform === 'dramabox') {
         // New API: Fetch from list API to get chapterCount and drama info

@@ -18,11 +18,15 @@ require_once 'includes/header.php';
             >
                 <!-- Logo Image -->
                 <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-white/10 overflow-hidden">
+                    <?php if (file_exists("assets/image/{$key}.png")): ?>
                     <img 
                         src="assets/image/<?php echo $key; ?>.png" 
                         alt="<?php echo $platform['name']; ?>"
                         class="w-full h-full object-contain"
                     >
+                    <?php else: ?>
+                    <span class="text-xl"><?php echo $platform['icon']; ?></span>
+                    <?php endif; ?>
                 </div>
                 
                 <!-- Platform Name -->
@@ -72,7 +76,7 @@ require_once 'includes/header.php';
         <div x-show="!loading" x-transition class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
             
             <template x-for="drama in dramas" :key="drama.id">
-                <a :href="'watch.php?id=' + drama.bookId + '&ep=1&platform=' + activePlatform" class="group relative bg-gray-800 rounded-lg overflow-hidden hover:ring-2 hover:ring-cyan-500 transition-all duration-300 cursor-pointer block">
+                <a :href="'watch.php?bookId=' + drama.bookId + '&ep=1&platform=' + activePlatform" class="group relative bg-gray-800 rounded-lg overflow-hidden hover:ring-2 hover:ring-cyan-500 transition-all duration-300 cursor-pointer block">
                     
                     <!-- Drama Poster -->
                     <div class="relative aspect-[2/3] overflow-hidden">

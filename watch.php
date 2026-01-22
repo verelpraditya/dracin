@@ -1,7 +1,7 @@
 <?php
 require_once 'config.php';
 
-$bookId = $_GET['id'] ?? '';
+$bookId = $_GET['bookId'] ?? '';
 $episodeNum = $_GET['ep'] ?? 1;
 $platform = $_GET['platform'] ?? 'dramabox';
 
@@ -359,8 +359,8 @@ $pageTitle = 'Watch Drama';
                         data = JSON.parse(cached);
                         console.log('Using cached episodes');
                     } else {
-                        // Fetch episodes - use obfuscated API for dramabox
-                        if (this.platform === 'dramabox') {
+                        // Fetch episodes - use obfuscated API for dramabox and flickreels
+                        if (this.platform === 'dramabox' || this.platform === 'flickreels') {
                             const token = this.generateToken('dre2');
                             const params = `i=${this.bookId}&p=${this.platform}`;
                             const encoded = btoa(params);
@@ -411,7 +411,7 @@ $pageTitle = 'Watch Drama';
                         if (episode) {
                             this.currentEpisode = episode.episode_number;
                             
-                            // For new API, fetch video URL on-demand
+                            // For DramaBox, fetch video URL on-demand; FlickReels has URL already
                             if (this.platform === 'dramabox' && !episode.video_url) {
                                 await this.fetchVideoUrl(episode.episode_number);
                             } else {
@@ -464,7 +464,7 @@ $pageTitle = 'Watch Drama';
                 url.searchParams.set('ep', episodeNum);
                 window.history.pushState({}, '', url);
                 
-                // For new API, fetch video URL first if empty
+                // For DramaBox, fetch video URL first if empty; FlickReels has URL already
                 if (this.platform === 'dramabox' && !videoUrl) {
                     this.fetchVideoUrl(episodeNum);
                 } else {
@@ -477,7 +477,7 @@ $pageTitle = 'Watch Drama';
                 this.loading = true;
                 try {
                     const token = this.generateToken('drv2');
-                    const params = `i=${this.bookId}&e=${episodeNum}`;
+                    const params = `i=${this.bookId}&e=${episodeNum}&p=${this.platform}`;
                     const encoded = btoa(params);
                     
                     const response = await fetch(`api/v.php?t=${token}&q=${encoded}`);

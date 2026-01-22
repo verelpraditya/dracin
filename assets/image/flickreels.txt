@@ -1,0 +1,5 @@
+Please add flickreels.png logo image here.
+
+For now, the icon emoji 🎞️ will be displayed as fallback in the platform selector.
+
+Recommended logo size: 200x200 pixels (PNG with transparency)
