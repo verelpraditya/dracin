@@ -18,7 +18,10 @@ try {
     // Map platform to API endpoint
     $useNewApi = USE_NEW_DRAMABOX_API && $platform === 'dramabox';
     
-    if ($useNewApi) {
+    if ($platform === 'flickreels') {
+        // FlickReels API search
+        $apiUrl = 'https://dramabos.asia/api/flick/search?keyword=' . urlencode($query) . '&lang=6';
+    } elseif ($useNewApi) {
         // New DramaBox API - use new search endpoint
         $apiUrl = 'https://dramabos.asia/api/dramabox/api/search/' . urlencode($query) . '/1?lang=in&pageSize=20';
     } else {
@@ -125,8 +128,36 @@ try {
                     ];
                 }
             }
-        }
-    } elseif ($platform === 'netshort') {
+        }    } elseif ($platform === 'flickreels') {
+        // FlickReels API response structure - data is directly in 'data' array
+        if (isset($apiData['data']) && is_array($apiData['data'])) {
+            foreach ($apiData['data'] as $item) {
+                if (!is_array($item)) continue;
+                
+                $tags = [];
+                if (isset($item['tag_list']) && is_array($item['tag_list'])) {
+                    // Extract tag names from tag_list array
+                    foreach ($item['tag_list'] as $tag) {
+                        if (isset($tag['tag_name'])) {
+                            $tags[] = $tag['tag_name'];
+                        }
+                    }
+                    $tags = array_slice($tags, 0, 3);
+                }
+                
+                $results[] = [
+                    'id' => strval($item['playlet_id'] ?? ''),
+                    'bookId' => strval($item['playlet_id'] ?? ''),
+                    'title' => $item['title'] ?? 'Unknown',
+                    'poster' => $item['cover'] ?? '',
+                    'rating' => 0,
+                    'tags' => $tags,
+                    'episodes' => intval($item['upload_num'] ?? 0),
+                    'year' => date('Y'),
+                    'description' => $item['introduce'] ?? ''
+                ];
+            }
+        }    } elseif ($platform === 'netshort') {
         if (isset($apiData['searchCodeSearchResult']) && is_array($apiData['searchCodeSearchResult'])) {
             foreach ($apiData['searchCodeSearchResult'] as $item) {
                 $tags = [];

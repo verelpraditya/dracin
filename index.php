@@ -246,6 +246,8 @@ function dramaApp() {
             const names = {
                 'dramabox': 'DramaBox',
                 'netshort': 'NetShort',
+                'flickreels': 'FlickReels',
+                'melolo': 'Melolo'
             };
             return names[platform] || 'Unknown';
         }
