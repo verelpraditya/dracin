@@ -162,9 +162,9 @@ $pageTitle = 'Watch Drama';
                 @loadedmetadata="onVideoLoaded()"
                 @play="isPlaying = true"
                 @pause="isPlaying = false"
+                @ended="onVideoEnded()"
                 class="w-full h-full"
             >
-                <source :src="currentVideoUrl" type="video/mp4">
                 Browser Anda tidak mendukung video player.
             </video>
             
@@ -328,6 +328,7 @@ $pageTitle = 'Watch Drama';
             activeRange: 0,
             episodeRanges: [],
             isPlaying: false,
+            videoInitialized: false,
             
             async init() {
                 await this.loadEpisodes();
@@ -374,16 +375,9 @@ $pageTitle = 'Watch Drama';
                             this.currentVideoUrl = episode.video_url;
                             this.currentEpisode = episode.episode_number;
                             
-                            // Wait for next tick and play video
-                            this.$nextTick(() => {
-                                const video = this.$refs.videoPlayer;
-                                if (video) {
-                                    video.load();
-                                    video.play().catch(err => {
-                                        console.log('Autoplay prevented:', err);
-                                    });
-                                }
-                            });
+                            // Wait for next tick and load video
+                            await this.$nextTick();
+                            this.loadVideoSource(episode.video_url, true);
                         }
                     } else {
                         alert('Gagal memuat episode: ' + (data.error || 'Unknown error'));
@@ -431,9 +425,38 @@ $pageTitle = 'Watch Drama';
                 url.searchParams.set('ep', episodeNum);
                 window.history.pushState({}, '', url);
                 
-                // Play video
-                this.$refs.videoPlayer.load();
-                this.$refs.videoPlayer.play();
+                // Load and play video
+                this.loadVideoSource(videoUrl, true);
+            },
+            
+            loadVideoSource(videoUrl, autoplay = false) {
+                if (!videoUrl) return;
+                
+                const video = this.$refs.videoPlayer;
+                if (!video) return;
+                
+                // Remove all existing source elements
+                while (video.firstChild) {
+                    video.removeChild(video.firstChild);
+                }
+                
+                // Create new source element
+                const source = document.createElement('source');
+                source.src = videoUrl;
+                source.type = 'video/mp4';
+                video.appendChild(source);
+                
+                // Load video
+                video.load();
+                
+                // Auto play if requested
+                if (autoplay) {
+                    video.addEventListener('loadeddata', () => {
+                        video.play().catch(err => {
+                            console.log('Autoplay prevented:', err);
+                        });
+                    }, { once: true });
+                }
             },
             
             toggleEpisodeSelector() {
@@ -475,7 +498,15 @@ $pageTitle = 'Watch Drama';
             },
             
             onVideoLoaded() {
-                console.log('Video loaded');
+                console.log('Video metadata loaded');
+            },
+            
+            onVideoEnded() {
+                // Auto play next episode
+                const nextEp = this.episodes.find(ep => ep.episode_number === this.currentEpisode + 1);
+                if (nextEp) {
+                    this.changeEpisode(nextEp.episode_number, nextEp.video_url);
+                }
             },
             
             togglePlayPause() {
