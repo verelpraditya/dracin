@@ -339,7 +339,7 @@ $pageTitle = 'Watch Drama';
                 
                 try {
                     // Check localStorage cache first (cache for 1 hour)
-                    const cacheKey = `episodes_${this.platform}_${this.bookId}`;
+                    const cacheKey = `episodes_v2_${this.platform}_${this.bookId}`;
                     const cached = localStorage.getItem(cacheKey);
                     const cacheTime = localStorage.getItem(`${cacheKey}_time`);
                     const now = Date.now();
@@ -351,8 +351,13 @@ $pageTitle = 'Watch Drama';
                         data = JSON.parse(cached);
                         console.log('Using cached episodes');
                     } else {
-                        // Fetch episodes
-                        const response = await fetch(`api/episodes.php?bookId=${this.bookId}&platform=${this.platform}`);
+                        // Fetch episodes - use new API for dramabox
+                        const apiFile = this.platform === 'dramabox' ? 'episodes2.php' : 'episodes.php';
+                        
+                        // For new API, let episodes2.php fetch the total automatically
+                        const apiParams = this.platform === 'dramabox' ? `?bookId=${this.bookId}&platform=${this.platform}&newapi=1` : `?bookId=${this.bookId}&platform=${this.platform}`;
+                        
+                        const response = await fetch(`api/${apiFile}${apiParams}`);
                         data = await response.json();
                         
                         // Cache the response
@@ -372,12 +377,15 @@ $pageTitle = 'Watch Drama';
                         // Load first episode or specified episode
                         const episode = this.episodes.find(ep => ep.episode_number === this.currentEpisode) || this.episodes[0];
                         if (episode) {
-                            this.currentVideoUrl = episode.video_url;
                             this.currentEpisode = episode.episode_number;
                             
-                            // Wait for next tick and load video
-                            await this.$nextTick();
-                            this.loadVideoSource(episode.video_url, true);
+                            // For new API, fetch video URL on-demand
+                            if (this.platform === 'dramabox' && !episode.video_url) {
+                                await this.fetchVideoUrl(episode.episode_number);
+                            } else {
+                                this.currentVideoUrl = episode.video_url;
+                                this.loadVideoSource(episode.video_url, true);
+                            }
                         }
                     } else {
                         alert('Gagal memuat episode: ' + (data.error || 'Unknown error'));
@@ -417,7 +425,6 @@ $pageTitle = 'Watch Drama';
             
             changeEpisode(episodeNum, videoUrl) {
                 this.currentEpisode = episodeNum;
-                this.currentVideoUrl = videoUrl;
                 this.showEpisodeSelector = false;
                 
                 // Update URL without reload
@@ -425,8 +432,41 @@ $pageTitle = 'Watch Drama';
                 url.searchParams.set('ep', episodeNum);
                 window.history.pushState({}, '', url);
                 
-                // Load and play video
-                this.loadVideoSource(videoUrl, true);
+                // For new API, fetch video URL first if empty
+                if (this.platform === 'dramabox' && !videoUrl) {
+                    this.fetchVideoUrl(episodeNum);
+                } else {
+                    this.currentVideoUrl = videoUrl;
+                    this.loadVideoSource(videoUrl, true);
+                }
+            },
+            
+            async fetchVideoUrl(episodeNum) {
+                this.loading = true;
+                try {
+                    const response = await fetch(`api/getvideo.php?bookId=${this.bookId}&episode=${episodeNum}`);
+                    const data = await response.json();
+                    
+                    if (data.success && data.data.video_url) {
+                        this.currentVideoUrl = data.data.video_url;
+                        
+                        // Update episode in array
+                        const episode = this.episodes.find(ep => ep.episode_number === episodeNum);
+                        if (episode) {
+                            episode.video_url = data.data.video_url;
+                        }
+                        
+                        // Load video
+                        this.loadVideoSource(data.data.video_url, true);
+                    } else {
+                        alert('Gagal memuat video: ' + (data.message || 'Unknown error'));
+                    }
+                } catch (error) {
+                    console.error('Error fetching video URL:', error);
+                    alert('Terjadi kesalahan saat memuat video. Silakan coba lagi.');
+                } finally {
+                    this.loading = false;
+                }
             },
             
             loadVideoSource(videoUrl, autoplay = false) {
@@ -494,7 +534,7 @@ $pageTitle = 'Watch Drama';
             },
             
             goBack() {
-                window.history.back();
+                window.location.href = 'index.php';
             },
             
             onVideoLoaded() {

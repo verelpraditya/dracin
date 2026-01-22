@@ -6,6 +6,9 @@ define('SITE_NAME', 'Dramain');
 define('SITE_URL', 'http://localhost/dracin');
 define('BASE_PATH', __DIR__);
 
+// API Version Control
+define('USE_NEW_DRAMABOX_API', true); // Set to true to use new API, false for old API
+
 // API Configuration - You will fill these later
 define('DRAMABOX_API_URL', 'https://api.dramabox.com/endpoint');
 define('NETSHORT_API_URL', 'https://api.netshort.com/endpoint');
@@ -29,16 +32,6 @@ $platforms = [
         'name' => 'NetShort',
         'icon' => '🎥',
         'color' => 'from-orange-500 to-pink-500'
-    ],
-    'melolo' => [
-        'name' => 'MELOLO',
-        'icon' => '🎭',
-        'color' => 'from-yellow-500 to-orange-500'
-    ],
-    'flickreels' => [
-        'name' => 'FlickReels',
-        'icon' => '🎞️',
-        'color' => 'from-yellow-400 to-yellow-600'
     ]
 ];
 

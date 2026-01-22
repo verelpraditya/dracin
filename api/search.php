@@ -16,16 +16,24 @@ try {
     }
     
     // Map platform to API endpoint
-    $apiUrls = [
-        'dramabox' => 'https://api.sansekai.my.id/api/dramabox/search?query=' . urlencode($query),
-        'netshort' => 'https://api.sansekai.my.id/api/netshort/search?query=' . urlencode($query)
-    ];
+    $useNewApi = USE_NEW_DRAMABOX_API && $platform === 'dramabox';
     
-    if (!isset($apiUrls[$platform])) {
-        throw new Exception('Search not available for this platform yet');
+    if ($useNewApi) {
+        // New DramaBox API - use search from list (no dedicated search endpoint yet)
+        // For now, fetch from foryou and filter client-side or use old API
+        $apiUrl = 'https://api.sansekai.my.id/api/dramabox/search?query=' . urlencode($query);
+    } else {
+        $apiUrls = [
+            'dramabox' => 'https://api.sansekai.my.id/api/dramabox/search?query=' . urlencode($query),
+            'netshort' => 'https://api.sansekai.my.id/api/netshort/search?query=' . urlencode($query)
+        ];
+        
+        if (!isset($apiUrls[$platform])) {
+            throw new Exception('Search not available for this platform yet');
+        }
+        
+        $apiUrl = $apiUrls[$platform];
     }
-    
-    $apiUrl = $apiUrls[$platform];
     
     // Fetch from API
     $ch = curl_init();

@@ -198,7 +198,9 @@ function dramaApp() {
             this.dramas = [];
             
             try {
-                const response = await fetch(`api/${platform}.php`);
+                // Use new API for dramabox
+                const apiFile = platform === 'dramabox' ? 'dramabox2.php' : `${platform}.php`;
+                const response = await fetch(`api/${apiFile}`);
                 const data = await response.json();
                 
                 if (data.success) {
@@ -228,8 +230,6 @@ function dramaApp() {
             const icons = {
                 'dramabox': '🎬',
                 'netshort': '🎥',
-                'melolo': '🎭',
-                'flickreels': '🎞️'
             };
             return icons[platform] || '📺';
         },
@@ -238,8 +238,6 @@ function dramaApp() {
             const names = {
                 'dramabox': 'DramaBox',
                 'netshort': 'NetShort',
-                'melolo': 'MELOLO',
-                'flickreels': 'FlickReels'
             };
             return names[platform] || 'Unknown';
         }
