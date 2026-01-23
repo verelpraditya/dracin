@@ -75,7 +75,7 @@ require_once 'includes/header.php';
         <!-- Drama Grid -->
         <div x-show="!loading" x-transition class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
             
-            <template x-for="drama in dramas" :key="drama.id">
+            <template x-for="drama in dramas" :key="drama.bookId">
                 <a :href="'watch.php?bookId=' + drama.bookId + '&ep=1&platform=' + activePlatform" class="group relative bg-gray-800 rounded-lg overflow-hidden hover:ring-2 hover:ring-cyan-500 transition-all duration-300 cursor-pointer block">
                     
                     <!-- Drama Poster -->
@@ -126,6 +126,29 @@ require_once 'includes/header.php';
             
         </div>
         
+        <!-- Load More Button -->
+        <div x-show="!loading && !isSearchMode && activePlatform === 'dramabox' && hasMore && dramas.length > 0" class="flex flex-col items-center mt-8 mb-4">
+            <!-- Loading More Indicator -->
+            <div x-show="loadingMore" class="mb-4">
+                <div class="flex items-center gap-3 text-cyan-400">
+                    <svg class="animate-spin h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="text-lg font-medium">Tunggu Sebentar ya...</span>
+                </div>
+            </div>
+            
+            <!-- Load More Button -->
+            <button 
+                x-show="!loadingMore"
+                @click="loadMore()"
+                class="px-8 py-3 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white font-semibold rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+                <span>Load More</span>
+            </button>
+        </div>
+        
         <!-- Empty State -->
         <div x-show="!loading && dramas.length === 0" class="text-center py-20">
             <svg class="w-24 h-24 mx-auto text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -146,8 +169,11 @@ function dramaApp() {
         activePlatform: 'dramabox',
         dramas: [],
         loading: false,
+        loadingMore: false,
         isSearchMode: false,
         searchQuery: '',
+        currentPage: 1,
+        hasMore: true,
         
         init() {
             // Load initial platform data
@@ -201,27 +227,67 @@ function dramaApp() {
             }
         },
         
-        async loadPlatformData(platform) {
-            this.loading = true;
-            this.dramas = [];
+        async loadPlatformData(platform, page = 1, append = false) {
+            if (!append) {
+                this.loading = true;
+                this.dramas = [];
+                this.currentPage = 1;
+                this.hasMore = true;
+            } else {
+                this.loadingMore = true;
+            }
             
             try {
-                // Use new API for dramabox
-                const apiFile = platform === 'dramabox' ? 'dramabox2.php' : `${platform}.php`;
-                const response = await fetch(`api/${apiFile}`);
+                // Use new API for dramabox with page support
+                let apiUrl;
+                if (platform === 'dramabox') {
+                    apiUrl = `api/dramabox2.php?page=${page}`;
+                } else {
+                    apiUrl = `api/${platform}.php`;
+                }
+                
+                const response = await fetch(apiUrl);
                 const data = await response.json();
                 
-                if (data.success) {
-                    this.dramas = data.data;
+                if (data.success && data.data && Array.isArray(data.data)) {
+                    if (append) {
+                        // Ensure dramas is always an array before spreading
+                        this.dramas = [...(Array.isArray(this.dramas) ? this.dramas : []), ...data.data];
+                    } else {
+                        this.dramas = data.data;
+                    }
+                    
+                    // For DramaBox, hide Load More when no more data
+                    if (platform === 'dramabox') {
+                        this.hasMore = data.data.length > 0;
+                    }
+                } else {
+                    // No more data or error
+                    this.hasMore = false;
+                    if (!append) {
+                        this.dramas = [];
+                    }
                 }
             } catch (error) {
                 console.error('Error loading data:', error);
+                this.hasMore = false;
+                if (!append) {
+                    this.dramas = [];
+                }
             } finally {
                 // Simulate loading delay for smooth UX
                 setTimeout(() => {
                     this.loading = false;
+                    this.loadingMore = false;
                 }, 500);
             }
+        },
+        
+        async loadMore() {
+            if (this.loadingMore || !this.hasMore || this.isSearchMode) return;
+            
+            this.currentPage++;
+            await this.loadPlatformData(this.activePlatform, this.currentPage, true);
         },
         
         getPlatformColor(platform) {

@@ -4,8 +4,12 @@ require_once '../config.php';
 header('Content-Type: application/json');
 
 try {
-    // Fetch data from new DramaBox API
-    $apiUrl = 'https://dramabos.asia/api/dramabox/api/foryou/1?lang=in';
+    // Get page parameter (default to 1)
+    $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
+    if ($page < 1) $page = 1;
+    
+    // Fetch data from new DramaBox API with page
+    $apiUrl = 'https://dramabos.asia/api/dramabox/api/foryou/' . $page . '?lang=in';
     
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $apiUrl);
