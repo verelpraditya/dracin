@@ -47,11 +47,8 @@ try {
             
             $bookId = $item['bookId'] ?? '';
             if (!empty($bookId)) {
-                // API chapterCount is 1 more than actual episodes
+                // Get episode count from chapterCount
                 $chapterCount = intval($item['chapterCount'] ?? 0);
-                if ($chapterCount > 0) {
-                    $chapterCount = $chapterCount - 1;
-                }
                 
                 $dramas[] = [
                     'id' => $bookId,

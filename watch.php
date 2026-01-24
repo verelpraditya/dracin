@@ -347,7 +347,7 @@ $pageTitle = 'Watch Drama';
                 
                 try {
                     // Check localStorage cache first (cache for 1 hour)
-                    const cacheKey = `episodes_v2_${this.platform}_${this.bookId}`;
+                    const cacheKey = `episodes_v3_${this.platform}_${this.bookId}`;
                     const cached = localStorage.getItem(cacheKey);
                     const cacheTime = localStorage.getItem(`${cacheKey}_time`);
                     const now = Date.now();

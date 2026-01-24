@@ -109,11 +109,8 @@ try {
                             $dramaCover = $item['cover'] ?? '';
                             $dramaDesc = $item['introduction'] ?? '';
                             
-                            // API chapterCount is 1 more than actual episodes, so subtract 1
+                            // Get total episodes from chapterCount
                             $totalFromList = intval($item['chapterCount'] ?? 0);
-                            if ($totalFromList > 0) {
-                                $totalFromList = $totalFromList - 1;
-                            }
                             break;
                         }
                     }
@@ -126,12 +123,12 @@ try {
             }
         }
         
-        // Generate episodes array without video URLs
+        // Generate episodes array without video URLs (0-based indexing for API)
         $episodes = [];
-        for ($i = 1; $i <= $totalFromList; $i++) {
+        for ($i = 0; $i < $totalFromList; $i++) {
             $episodes[] = [
-                'n' => $i,
-                't' => 'Episode ' . $i,
+                'n' => $i + 1,  // Display number starts from 1 for UI
+                't' => 'Episode ' . ($i + 1),
                 'u' => ''
             ];
         }

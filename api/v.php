@@ -39,8 +39,11 @@ try {
         exit;
     }
     
+    // Convert episode number to 0-based index for DramaBox API (Episode 1 = index 0)
+    $index = $episode - 1;
+    
     // Fetch video URL from new API (DramaBox)
-    $playerUrl = 'https://dramabos.asia/api/dramabox/api/watch/player?bookId=' . urlencode($bookId) . '&index=' . $episode . '&lang=in';
+    $playerUrl = 'https://dramabos.asia/api/dramabox/api/watch/player?bookId=' . urlencode($bookId) . '&index=' . $index . '&lang=in';
     
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $playerUrl);
