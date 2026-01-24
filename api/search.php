@@ -3,6 +3,34 @@ require_once '../config.php';
 
 header('Content-Type: application/json');
 
+// Helper function to get episode count from chapters API
+function getEpisodeCount($bookId) {
+    $chaptersUrl = 'https://dramabos.asia/api/dramabox/api/chapters/' . urlencode($bookId) . '?lang=in';
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $chaptersUrl);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+    
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($httpCode == 200 && $response) {
+        $data = json_decode($response, true);
+        if ($data && isset($data['data']['chapterList']) && is_array($data['data']['chapterList']) && count($data['data']['chapterList']) > 0) {
+            // Get the last chapter's index and add 1 (since index starts from 0)
+            $lastChapter = end($data['data']['chapterList']);
+            return intval($lastChapter['chapterIndex'] ?? -1) + 1;
+        }
+    }
+    
+    return 0;
+}
+
 try {
     $platform = $_GET['platform'] ?? 'dramabox';
     $query = $_GET['query'] ?? '';
@@ -79,20 +107,17 @@ try {
                     $tags = array_slice($item['tags'], 0, 3);
                 }
                 
-                // API chapterCount is 1 more than actual episodes
-                $chapterCount = intval($item['chapterCount'] ?? 0);
-                if ($chapterCount > 0) {
-                    $chapterCount = $chapterCount - 1;
-                }
+                // Get bookId
+                $bookId = $item['bookId'] ?? '';
                 
                 $results[] = [
-                    'id' => $item['bookId'] ?? '',
-                    'bookId' => $item['bookId'] ?? '',
+                    'id' => $bookId,
+                    'bookId' => $bookId,
                     'title' => $item['bookName'] ?? 'Unknown',
                     'poster' => $item['cover'] ?? '',
                     'rating' => 0,
                     'tags' => $tags,
-                    'episodes' => $chapterCount,
+                    'episodes' => 0, // Will be fetched when user plays the drama
                     'year' => date('Y'),
                     'description' => $item['introduction'] ?? ''
                 ];

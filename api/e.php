@@ -76,13 +76,40 @@ try {
     
     // Use new API for DramaBox
     if ($platform === 'dramabox') {
-        // New API: Fetch from list API to get chapterCount and drama info
-        $totalFromList = intval($_GET['total'] ?? 0);
+        // New API: Fetch from chapters API to get accurate episode count
         $dramaTitle = 'Drama';
         $dramaCover = '';
         $dramaDesc = '';
+        $totalFromList = 0;
         
-        // If total not provided, fetch from list API
+        // First, try to get episode count from chapters API
+        $chaptersUrl = 'https://dramabos.asia/api/dramabox/api/chapters/' . urlencode($bookId) . '?lang=in';
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $chaptersUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($httpCode == 200 && $response) {
+            $chaptersData = json_decode($response, true);
+            if ($chaptersData && isset($chaptersData['data']['chapterList']) && is_array($chaptersData['data']['chapterList'])) {
+                $chapterList = $chaptersData['data']['chapterList'];
+                if (count($chapterList) > 0) {
+                    // Get the last chapter's index and add 1 (since index starts from 0)
+                    $lastChapter = end($chapterList);
+                    $totalFromList = intval($lastChapter['chapterIndex'] ?? -1) + 1;
+                }
+            }
+        }
+        
+        // If chapters API failed, try to fetch from list API as fallback
         if ($totalFromList <= 0) {
             $listUrl = 'https://dramabos.asia/api/dramabox/api/foryou/1?lang=in';
             
@@ -117,7 +144,7 @@ try {
                 }
             }
             
-            // Fallback to 50 if still not found
+            // Final fallback to 50 if still not found
             if ($totalFromList <= 0) {
                 $totalFromList = 50;
             }
