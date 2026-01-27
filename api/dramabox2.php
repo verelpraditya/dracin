@@ -9,7 +9,7 @@ try {
     if ($page < 1) $page = 1;
     
     // Fetch data from new DramaBox API with page
-    $apiUrl = 'https://dramabos.asia/api/dramabox/api/foryou/' . $page . '?lang=in';
+    $apiUrl = 'https://dramabos.asia/api/dramabox/api/recommend/' . $page . '?lang=in';
     
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $apiUrl);
