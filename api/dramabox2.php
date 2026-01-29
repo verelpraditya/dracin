@@ -30,15 +30,21 @@ try {
     
     $apiData = json_decode($response, true);
     
-    if (!$apiData || !isset($apiData['success']) || !$apiData['success']) {
+    if (!$apiData || !isset($apiData['recommendList'])) {
         throw new Exception('Invalid API response');
     }
     
     // Transform API data to our format
     $dramas = [];
     
-    if (isset($apiData['data']['list']) && is_array($apiData['data']['list'])) {
-        foreach ($apiData['data']['list'] as $item) {
+    // New API structure uses recommendList.records instead of data.list
+    if (isset($apiData['recommendList']['records']) && is_array($apiData['recommendList']['records'])) {
+        foreach ($apiData['recommendList']['records'] as $item) {
+            // Skip tag cards (cardType 3)
+            if (isset($item['cardType']) && $item['cardType'] == 3) {
+                continue;
+            }
+            
             // Extract tags
             $tags = [];
             if (isset($item['tags']) && is_array($item['tags'])) {
@@ -54,22 +60,32 @@ try {
                     'id' => $bookId,
                     'bookId' => $bookId,
                     'title' => $item['bookName'] ?? 'Unknown',
-                    'poster' => $item['cover'] ?? '',
+                    'poster' => $item['coverWap'] ?? $item['cover'] ?? '',
                     'rating' => 0,
                     'tags' => $tags,
                     'episodes' => $chapterCount,
                     'year' => date('Y'),
-                    'description' => $item['introduction'] ?? ''
+                    'description' => $item['introduction'] ?? '',
+                    'playCount' => $item['playCount'] ?? ''
                 ];
             }
         }
     }
     
+    // Get pagination info from API response
+    $pagination = $apiData['recommendList'];
+    
     echo json_encode([
         'success' => true,
         'platform' => 'dramabox',
         'data' => $dramas,
-        'total' => count($dramas)
+        'total' => count($dramas),
+        'pagination' => [
+            'current' => $pagination['current'] ?? 1,
+            'size' => $pagination['size'] ?? 9,
+            'totalPages' => $pagination['pages'] ?? 1,
+            'totalRecords' => $pagination['total'] ?? count($dramas)
+        ]
     ]);
     
 } catch (Exception $e) {

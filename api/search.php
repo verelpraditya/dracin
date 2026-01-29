@@ -50,8 +50,8 @@ try {
         // FlickReels API search
         $apiUrl = 'https://dramabos.asia/api/flick/search?keyword=' . urlencode($query) . '&lang=6';
     } elseif ($useNewApi) {
-        // New DramaBox API - use new search endpoint
-        $apiUrl = 'https://dramabos.asia/api/dramabox/api/search/' . urlencode($query) . '/1?lang=in&pageSize=20';
+        // New DramaBox API - use new search endpoint without page
+        $apiUrl = 'https://dramabos.asia/api/dramabox/api/search/' . urlencode($query) . '?lang=in';
     } else {
         $apiUrls = [
             'dramabox' => 'https://api.sansekai.my.id/api/dramabox/search?query=' . urlencode($query),
@@ -92,19 +92,19 @@ try {
     $results = [];
     
     if ($platform === 'dramabox') {
-        // New API response structure
+        // New API response structure - uses searchList
         if ($useNewApi) {
             $items = [];
-            if (isset($apiData['data']['list']) && is_array($apiData['data']['list'])) {
-                $items = $apiData['data']['list'];
+            if (isset($apiData['searchList']) && is_array($apiData['searchList'])) {
+                $items = $apiData['searchList'];
             }
             
             foreach ($items as $item) {
                 if (!is_array($item)) continue;
                 
                 $tags = [];
-                if (isset($item['tags']) && is_array($item['tags'])) {
-                    $tags = array_slice($item['tags'], 0, 3);
+                if (isset($item['tagNames']) && is_array($item['tagNames'])) {
+                    $tags = array_slice($item['tagNames'], 0, 3);
                 }
                 
                 // Get bookId
@@ -119,7 +119,8 @@ try {
                     'tags' => $tags,
                     'episodes' => 0, // Will be fetched when user plays the drama
                     'year' => date('Y'),
-                    'description' => $item['introduction'] ?? ''
+                    'description' => $item['introduction'] ?? '',
+                    'playCount' => $item['playCount'] ?? ''
                 ];
             }
         } else {

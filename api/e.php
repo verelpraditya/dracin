@@ -76,17 +76,16 @@ try {
     
     // Use new API for DramaBox
     if ($platform === 'dramabox') {
-        // New API: Fetch from chapters API to get accurate episode count
         $dramaTitle = 'Drama';
         $dramaCover = '';
         $dramaDesc = '';
-        $totalFromList = 0;
+        $totalEpisodes = 0;
         
-        // First, try to get episode count from chapters API
-        $chaptersUrl = 'https://dramabos.asia/api/dramabox/api/chapters/' . urlencode($bookId) . '?lang=in';
+        // Fetch drama details from drama API
+        $dramaUrl = 'https://dramabos.asia/api/dramabox/api/drama/' . urlencode($bookId) . '?lang=in';
         
         $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $chaptersUrl);
+        curl_setopt($ch, CURLOPT_URL, $dramaUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -98,64 +97,27 @@ try {
         curl_close($ch);
         
         if ($httpCode == 200 && $response) {
-            $chaptersData = json_decode($response, true);
-            if ($chaptersData && isset($chaptersData['data']['chapterList']) && is_array($chaptersData['data']['chapterList'])) {
-                $chapterList = $chaptersData['data']['chapterList'];
-                if (count($chapterList) > 0) {
-                    // Get the last chapter's index and add 1 (since index starts from 0)
-                    $lastChapter = end($chapterList);
-                    $totalFromList = intval($lastChapter['chapterIndex'] ?? -1) + 1;
-                }
+            $dramaData = json_decode($response, true);
+            if ($dramaData) {
+                // Get drama info from API response
+                $dramaTitle = $dramaData['bookName'] ?? 'Drama';
+                $dramaCover = $dramaData['coverWap'] ?? $dramaData['cover'] ?? '';
+                $dramaDesc = $dramaData['introduction'] ?? '';
+                $totalEpisodes = intval($dramaData['chapterCount'] ?? 0);
             }
         }
         
-        // If chapters API failed, try to fetch from list API as fallback
-        if ($totalFromList <= 0) {
-            $listUrl = 'https://dramabos.asia/api/dramabox/api/foryou/1?lang=in';
-            
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $listUrl);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-            curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
-            
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-            
-            if ($httpCode == 200 && $response) {
-                $listData = json_decode($response, true);
-                if ($listData && isset($listData['data']['list'])) {
-                    // Find this drama in the list
-                    foreach ($listData['data']['list'] as $item) {
-                        if (isset($item['bookId']) && $item['bookId'] == $bookId) {
-                            // Get drama info
-                            $dramaTitle = $item['bookName'] ?? 'Drama';
-                            $dramaCover = $item['cover'] ?? '';
-                            $dramaDesc = $item['introduction'] ?? '';
-                            
-                            // Get total episodes from chapterCount
-                            $totalFromList = intval($item['chapterCount'] ?? 0);
-                            break;
-                        }
-                    }
-                }
-            }
-            
-            // Final fallback to 50 if still not found
-            if ($totalFromList <= 0) {
-                $totalFromList = 50;
-            }
+        // Fallback to 50 if API failed
+        if ($totalEpisodes <= 0) {
+            $totalEpisodes = 50;
         }
         
-        // Generate episodes array without video URLs (0-based indexing for API)
+        // Generate episodes array (episode numbers start from 1)
         $episodes = [];
-        for ($i = 0; $i < $totalFromList; $i++) {
+        for ($i = 1; $i <= $totalEpisodes; $i++) {
             $episodes[] = [
-                'n' => $i + 1,  // Display number starts from 1 for UI
-                't' => 'Episode ' . ($i + 1),
+                'n' => $i,
+                't' => 'Episode ' . $i,
                 'u' => ''
             ];
         }
@@ -170,7 +132,7 @@ try {
                     'desc' => $dramaDesc
                 ],
                 'eps' => $episodes,
-                'total' => $totalFromList
+                'total' => $totalEpisodes
             ]
         ]));
         

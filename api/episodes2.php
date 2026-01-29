@@ -22,7 +22,7 @@ try {
         
         // If total not provided, fetch from list API
         if ($totalFromList <= 0) {
-            $listUrl = 'https://dramabos.asia/api/dramabox/api/foryou/1?lang=in';
+            $listUrl = 'https://dramabos.asia/api/dramabox/api/recommend/1?lang=in';
             
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, $listUrl);

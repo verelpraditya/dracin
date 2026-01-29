@@ -75,7 +75,7 @@ require_once 'includes/header.php';
         <!-- Drama Grid -->
         <div x-show="!loading" x-transition class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
             
-            <template x-for="drama in dramas" :key="drama.bookId">
+            <template x-for="(drama, index) in dramas" :key="drama.bookId + '-' + index">
                 <a :href="'watch.php?bookId=' + drama.bookId + '&ep=1&platform=' + activePlatform" class="group relative bg-gray-800 rounded-lg overflow-hidden hover:ring-2 hover:ring-cyan-500 transition-all duration-300 cursor-pointer block">
                     
                     <!-- Drama Poster -->
@@ -257,9 +257,13 @@ function dramaApp() {
                         this.dramas = data.data;
                     }
                     
-                    // For DramaBox, hide Load More when no more data
+                    // For DramaBox, check pagination to determine if there's more data
                     if (platform === 'dramabox') {
-                        this.hasMore = data.data.length > 0;
+                        if (data.pagination) {
+                            this.hasMore = data.pagination.current < data.pagination.totalPages;
+                        } else {
+                            this.hasMore = data.data.length > 0;
+                        }
                     }
                 } else {
                     // No more data or error

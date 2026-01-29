@@ -5,7 +5,7 @@ header('Content-Type: application/json');
 
 try {
     // Fetch data from new DramaBox API
-    $apiUrl = 'https://dramabos.asia/api/dramabox/api/foryou/1?lang=in';
+    $apiUrl = 'https://dramabos.asia/api/dramabox/api/recommend/1?lang=in';
     
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $apiUrl);

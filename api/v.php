@@ -39,11 +39,9 @@ try {
         exit;
     }
     
-    // Convert episode number to 0-based index for DramaBox API (Episode 1 = index 0)
-    $index = $episode - 1;
-    
-    // Fetch video URL from new API (DramaBox)
-    $playerUrl = 'https://dramabos.asia/api/dramabox/api/watch/player?bookId=' . urlencode($bookId) . '&index=' . $index . '&lang=in';
+    // New API uses episode number directly (starts from 1)
+    // URL format: https://dramabos.asia/api/dramabox/api/watch/{bookId}/{episode}?lang=in
+    $playerUrl = 'https://dramabos.asia/api/dramabox/api/watch/' . urlencode($bookId) . '/' . $episode . '?lang=in';
     
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $playerUrl);
@@ -63,24 +61,38 @@ try {
     
     $data = json_decode($response, true);
     
-    if (!$data || !isset($data['success']) || !$data['success']) {
+    if (!$data) {
         throw new Exception('Invalid video response');
     }
     
-    $episodeData = $data['data'] ?? [];
+    // New API response structure: {chapterId, name, videos: [{quality, videoPath, isDefault}]}
+    $videoUrl = '';
     
-    // Get video URL with best quality
-    $videoUrl = $episodeData['videoUrl'] ?? '';
-    
-    // Try to get better quality from qualities array
-    if (isset($episodeData['qualities']) && is_array($episodeData['qualities'])) {
-        foreach ([1080, 720, 540] as $quality) {
-            foreach ($episodeData['qualities'] as $q) {
-                if (isset($q['quality']) && $q['quality'] == $quality && isset($q['videoPath'])) {
-                    $videoUrl = $q['videoPath'];
+    // Get video URL with best quality from videos array
+    if (isset($data['videos']) && is_array($data['videos'])) {
+        // Try to get 720p first (good balance), then others
+        foreach ([720, 1080, 540, 360, 144] as $preferredQuality) {
+            foreach ($data['videos'] as $video) {
+                if (isset($video['quality']) && $video['quality'] == $preferredQuality && !empty($video['videoPath'])) {
+                    $videoUrl = $video['videoPath'];
                     break 2;
                 }
             }
+        }
+        
+        // If no preferred quality found, get the default one
+        if (empty($videoUrl)) {
+            foreach ($data['videos'] as $video) {
+                if (!empty($video['isDefault']) && !empty($video['videoPath'])) {
+                    $videoUrl = $video['videoPath'];
+                    break;
+                }
+            }
+        }
+        
+        // Last fallback: get first available video
+        if (empty($videoUrl) && count($data['videos']) > 0 && !empty($data['videos'][0]['videoPath'])) {
+            $videoUrl = $data['videos'][0]['videoPath'];
         }
     }
     

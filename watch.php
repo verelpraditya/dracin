@@ -347,7 +347,8 @@ $pageTitle = 'Watch Drama';
                 
                 try {
                     // Check localStorage cache first (cache for 1 hour)
-                    const cacheKey = `episodes_v4_${this.platform}_${this.bookId}`;
+                    // Version 5: Updated to use new drama API endpoint
+                    const cacheKey = `episodes_v5_${this.platform}_${this.bookId}`;
                     const cached = localStorage.getItem(cacheKey);
                     const cacheTime = localStorage.getItem(`${cacheKey}_time`);
                     const now = Date.now();
@@ -414,8 +415,9 @@ $pageTitle = 'Watch Drama';
                             // For DramaBox, fetch video URL on-demand; FlickReels has URL already
                             if (this.platform === 'dramabox' && !episode.video_url) {
                                 await this.fetchVideoUrl(episode.episode_number);
-                            } else {
+                            } else if (episode.video_url) {
                                 this.currentVideoUrl = episode.video_url;
+                                this.videoInitialized = true;
                                 this.loadVideoSource(episode.video_url, true);
                             }
                         }
@@ -459,6 +461,9 @@ $pageTitle = 'Watch Drama';
                 this.currentEpisode = episodeNum;
                 this.showEpisodeSelector = false;
                 
+                // Reset video initialized flag for new episode
+                this.videoInitialized = false;
+                
                 // Update URL without reload
                 const url = new URL(window.location);
                 url.searchParams.set('ep', episodeNum);
@@ -469,11 +474,17 @@ $pageTitle = 'Watch Drama';
                     this.fetchVideoUrl(episodeNum);
                 } else {
                     this.currentVideoUrl = videoUrl;
+                    this.videoInitialized = true;
                     this.loadVideoSource(videoUrl, true);
                 }
             },
             
             async fetchVideoUrl(episodeNum) {
+                // Prevent duplicate video loading
+                if (this.videoInitialized && this.currentVideoUrl) {
+                    return;
+                }
+                
                 this.loading = true;
                 try {
                     const token = this.generateToken('drv2');
@@ -494,8 +505,11 @@ $pageTitle = 'Watch Drama';
                                 episode.video_url = decoded.d.u;
                             }
                             
-                            // Load video
-                            this.loadVideoSource(decoded.d.u, true);
+                            // Load video only if not already initialized with same URL
+                            if (!this.videoInitialized) {
+                                this.videoInitialized = true;
+                                this.loadVideoSource(decoded.d.u, true);
+                            }
                         } else {
                             alert('Gagal memuat video');
                         }
