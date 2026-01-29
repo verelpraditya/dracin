@@ -127,7 +127,7 @@ require_once 'includes/header.php';
         </div>
         
         <!-- Load More Button -->
-        <div x-show="!loading && !isSearchMode && activePlatform === 'dramabox' && hasMore && dramas.length > 0" class="flex flex-col items-center mt-8 mb-4">
+        <div x-show="!loading && !isSearchMode && (activePlatform === 'dramabox' || activePlatform === 'netshort') && hasMore && dramas.length > 0" class="flex flex-col items-center mt-8 mb-4">
             <!-- Loading More Indicator -->
             <div x-show="loadingMore" class="mb-4">
                 <div class="flex items-center gap-3 text-cyan-400">
@@ -238,10 +238,12 @@ function dramaApp() {
             }
             
             try {
-                // Use new API for dramabox with page support
+                // Use new API for dramabox and netshort with page support
                 let apiUrl;
                 if (platform === 'dramabox') {
                     apiUrl = `api/dramabox2.php?page=${page}`;
+                } else if (platform === 'netshort') {
+                    apiUrl = `api/netshort.php?page=${page}`;
                 } else {
                     apiUrl = `api/${platform}.php`;
                 }
@@ -257,10 +259,16 @@ function dramaApp() {
                         this.dramas = data.data;
                     }
                     
-                    // For DramaBox, check pagination to determine if there's more data
+                    // Check pagination to determine if there's more data
                     if (platform === 'dramabox') {
                         if (data.pagination) {
                             this.hasMore = data.pagination.current < data.pagination.totalPages;
+                        } else {
+                            this.hasMore = data.data.length > 0;
+                        }
+                    } else if (platform === 'netshort') {
+                        if (data.pagination) {
+                            this.hasMore = data.pagination.hasMore;
                         } else {
                             this.hasMore = data.data.length > 0;
                         }

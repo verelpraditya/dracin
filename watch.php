@@ -339,10 +339,14 @@ $pageTitle = 'Watch Drama';
             },
             
             async init() {
+                // Prevent double initialization
+                if (this.videoInitialized) return;
                 await this.loadEpisodes();
             },
             
             async loadEpisodes() {
+                // Prevent double loading
+                if (this.videoInitialized) return;
                 this.loading = true;
                 
                 try {
@@ -412,10 +416,10 @@ $pageTitle = 'Watch Drama';
                         if (episode) {
                             this.currentEpisode = episode.episode_number;
                             
-                            // For DramaBox, fetch video URL on-demand; FlickReels has URL already
+                            // For DramaBox, fetch video URL on-demand; other platforms have URL already
                             if (this.platform === 'dramabox' && !episode.video_url) {
                                 await this.fetchVideoUrl(episode.episode_number);
-                            } else if (episode.video_url) {
+                            } else if (episode.video_url && !this.videoInitialized) {
                                 this.currentVideoUrl = episode.video_url;
                                 this.videoInitialized = true;
                                 this.loadVideoSource(episode.video_url, true);

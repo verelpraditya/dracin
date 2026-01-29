@@ -73,8 +73,12 @@ function getNetshortYear($item)
 }
 
 try {
-    // Fetch data from real NetShort API
-    $apiUrl = 'https://api.sansekai.my.id/api/netshort/theaters';
+    // Get page parameter (default to 1)
+    $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
+    if ($page < 1) $page = 1;
+    
+    // Fetch data from new NetShort API with pagination
+    $apiUrl = 'https://api.sansekai.my.id/api/netshort/foryou?page=' . $page;
 
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $apiUrl);
@@ -82,6 +86,7 @@ try {
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -101,49 +106,52 @@ try {
     // Transform API data to our format
     $shortPlays = [];
     $seen = [];
+    $hasMore = false;
+    $maxOffset = 0;
 
-    foreach ($apiData as $theater) {
-        $lists = [];
-        if (isset($theater['contentInfos']) && is_array($theater['contentInfos'])) {
-            $lists[] = $theater['contentInfos'];
-        }
-        if (isset($theater['shortPlayList']) && is_array($theater['shortPlayList'])) {
-            $lists[] = $theater['shortPlayList'];
-        }
-
-        foreach ($lists as $list) {
-            foreach ($list as $item) {
-                $shortPlayId = $item['shortPlayId'] ?? $item['shortPlayLibraryId'] ?? $item['id'] ?? '';
-                if ($shortPlayId === '') {
-                    continue;
-                }
-
-                if (isset($seen[$shortPlayId])) {
-                    continue;
-                }
-
-                $seen[$shortPlayId] = true;
-
-                $shortPlays[] = [
-                    'id' => $shortPlayId,
-                    'bookId' => $shortPlayId,
-                    'title' => $item['shortPlayName'] ?? 'Unknown',
-                    'poster' => getNetshortPoster($item),
-                    'rating' => 0,
-                    'tags' => extractNetshortTags($item),
-                    'episodes' => 1,
-                    'year' => getNetshortYear($item),
-                    'description' => ''
-                ];
+    // New API structure: contentInfos array contains the items
+    if (isset($apiData['contentInfos']) && is_array($apiData['contentInfos'])) {
+        foreach ($apiData['contentInfos'] as $item) {
+            $shortPlayId = $item['shortPlayId'] ?? $item['shortPlayLibraryId'] ?? $item['id'] ?? '';
+            if ($shortPlayId === '') {
+                continue;
             }
+
+            if (isset($seen[$shortPlayId])) {
+                continue;
+            }
+
+            $seen[$shortPlayId] = true;
+
+            $shortPlays[] = [
+                'id' => $shortPlayId,
+                'bookId' => $shortPlayId,
+                'title' => $item['shortPlayName'] ?? 'Unknown',
+                'poster' => getNetshortPoster($item),
+                'rating' => 0,
+                'tags' => extractNetshortTags($item),
+                'episodes' => 1,
+                'year' => getNetshortYear($item),
+                'description' => '',
+                'heatScore' => $item['heatScoreShow'] ?? ''
+            ];
         }
+        
+        // Check if there's more data
+        $maxOffset = intval($apiData['maxOffset'] ?? 0);
+        $hasMore = !($apiData['completed'] ?? true);
     }
 
     echo json_encode([
         'success' => true,
         'platform' => 'netshort',
         'data' => $shortPlays,
-        'total' => count($shortPlays)
+        'total' => count($shortPlays),
+        'pagination' => [
+            'current' => $page,
+            'hasMore' => $hasMore,
+            'maxOffset' => $maxOffset
+        ]
     ]);
 
 } catch (Exception $e) {
